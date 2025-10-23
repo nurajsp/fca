@@ -38,7 +38,7 @@ app.use((error, req, res, next) => {
 // MongoDB connection
 const connectDB = async () => {
   try {
-    const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/feedback_collector';
+    const mongoURI = process.env.MONGODB_URI;
     
     await mongoose.connect(mongoURI, {
       serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
