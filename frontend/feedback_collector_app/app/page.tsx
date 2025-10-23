@@ -1,65 +1,159 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState, FormEvent } from "react";
+
+interface Feedback {
+  _id: string;
+  name: string;
+  message: string;
+  createdAt: string;
+}
 
 export default function Home() {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL as string;
+
+  const [name, setName] = useState<string>("");
+  const [message, setMessage] = useState<string>("");
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [submitting, setSubmitting] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch feedbacks
+  const fetchFeedbacks = async (): Promise<void> => {
+    setLoading(true);
+    try {
+      const res = await fetch(API_URL);
+      if (!res.ok) throw new Error("Failed to fetch feedbacks");
+      const data: Feedback[] = await res.json();
+      setFeedbacks(data);
+    } catch (err) {
+      setError("Failed to load feedbacks");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFeedbacks();
+  }, []);
+
+  // Submit feedback
+  const submitHandler = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      const payload = { name, message };
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err?.error || "Failed to submit");
+      }
+      const saved: Feedback = await res.json();
+      setName("");
+      setMessage("");
+      setFeedbacks((prev: Feedback[]) => [saved, ...prev]);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Submit failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <main className="max-w-2xl mx-auto mt-12 px-6">
+      <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">
+        Feedback Collector
+      </h1>
+
+      <form
+        onSubmit={submitHandler}
+        className="bg-white shadow-md rounded-2xl p-6 mb-10 border border-gray-100"
+      >
+        <div className="mb-4">
+          <label
+            htmlFor="name"
+            className="block text-gray-700 font-medium mb-1"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            Name
+          </label>
+          <input
+            id="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            placeholder="Enter your name"
+          />
         </div>
-      </main>
-    </div>
+
+        <div className="mb-4">
+          <label
+            htmlFor="message"
+            className="block text-gray-700 font-medium mb-1"
+          >
+            Message
+          </label>
+          <textarea
+            id="message"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            required
+            rows={4}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            placeholder="Write your feedback..."
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className={`w-full py-2.5 text-white font-semibold rounded-lg transition ${
+            submitting
+              ? "bg-blue-400 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700"
+          }`}
+        >
+          {submitting ? "Submitting..." : "Submit Feedback"}
+        </button>
+
+        {error && <p className="text-red-600 mt-3 text-sm">{error}</p>}
+      </form>
+
+      <section>
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">
+          All Feedback
+        </h2>
+
+        {loading ? (
+          <p className="text-gray-500">Loading...</p>
+        ) : feedbacks.length === 0 ? (
+          <p className="text-gray-500 italic">No feedback yet.</p>
+        ) : (
+          <ul className="space-y-4">
+            {feedbacks.map((f) => (
+              <li
+                key={f._id}
+                className="bg-white shadow-sm border border-gray-100 rounded-xl p-4 hover:shadow-md transition"
+              >
+                <div className="flex justify-between items-center mb-2">
+                  <strong className="text-gray-800">{f.name}</strong>
+                  <small className="text-gray-500 text-sm">
+                    {new Date(f.createdAt).toLocaleString()}
+                  </small>
+                </div>
+                <p className="text-gray-700">{f.message}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </main>
   );
 }
